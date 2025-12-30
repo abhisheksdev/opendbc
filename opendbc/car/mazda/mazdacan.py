@@ -128,3 +128,25 @@ def create_button_cmd(packer, CP, counter, button):
     }
 
     return packer.make_can_msg("CRZ_BTNS", 0, values)
+
+def create_acc_command(packer, CP, CS, frame, active, hold, accel_cmd, counter):
+  ret = []
+
+  if CP.flags & MazdaFlags.GEN1:
+    crz_info = {
+      "ACC_ACTIVE": active,
+      "ACC_SET_ALLOWED": int(bool(int(CS.cp.vl["GEAR"]["GEAR"]) & 4)),
+      "CRZ_ENDED": 0,
+      "STOPPING_MAYBE": hold,
+      "STOPPING_MAYBE2": hold,
+      "ACCEL_CMD": accel_cmd,
+
+      "STATIC_1": 2047,
+      "STATIC_2": 0,
+      "MYSTERY_BIT_1": 0,
+      "MYSTERY_BIT_2": 0,
+      "MYSTERY_BIT_3": 0,
+
+      "CTR": (counter + 1) % 16,
+      "CHECKSUM": 0
+    }

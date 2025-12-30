@@ -5,6 +5,7 @@
 // CAN msgs we care about
 #define MAZDA_LKAS          0x243U
 #define MAZDA_LKAS_HUD      0x440U
+#define MAZDA_CRZ_INFO      0x21bU
 #define MAZDA_CRZ_CTRL      0x21cU
 #define MAZDA_CRZ_BTNS      0x09dU
 #define MAZDA_STEER_TORQUE  0x240U
@@ -84,10 +85,20 @@ static bool mazda_tx_hook(const CANPacket_t *msg) {
   return tx;
 }
 
+static bool mazda_fwd_hook(int bus_num, int addr) {
+  bool block_msg = false;
+  return block_msg;
+}
+
 static safety_config mazda_init(uint16_t param) {
-  static const CanMsg MAZDA_TX_MSGS[] = {{MAZDA_LKAS, 0, 8, .check_relay = true}, {MAZDA_CRZ_BTNS, 0, 8, .check_relay = false}, {MAZDA_LKAS_HUD, 0, 8, .check_relay = true}};
+  static const CanMsg MAZDA_TX_MSGS[] = {
+    { MAZDA_LKAS, 0, 8, .check_relay = true },
+    { MAZDA_CRZ_BTNS, 0, 8, .check_relay = false },
+    { MAZDA_LKAS_HUD, 0, 8, .check_relay = true }
+  };
 
   static RxCheck mazda_rx_checks[] = {
+    {.msg = {{MAZDA_CRZ_INFO,     0, 8, 50U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
     {.msg = {{MAZDA_CRZ_CTRL,     0, 8, 50U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
     {.msg = {{MAZDA_CRZ_BTNS,     0, 8, 10U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
     {.msg = {{MAZDA_STEER_TORQUE, 0, 8, 83U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
@@ -103,4 +114,5 @@ const safety_hooks mazda_hooks = {
   .init = mazda_init,
   .rx = mazda_rx_hook,
   .tx = mazda_tx_hook,
+  .fwd = mazda_fwd_hook
 };
