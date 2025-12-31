@@ -129,7 +129,7 @@ def create_button_cmd(packer, CP, counter, button):
 
     return packer.make_can_msg("CRZ_BTNS", 0, values)
 
-def create_acc_command(packer, CP, CS, frame, active, hold, accel_cmd, counter):
+def create_acc_command(packer, CP, CS, frame, active, hold, accel_cmd):
   ret = []
 
   if CP.flags & MazdaFlags.GEN1:
@@ -146,7 +146,37 @@ def create_acc_command(packer, CP, CS, frame, active, hold, accel_cmd, counter):
       "MYSTERY_BIT_1": 0,
       "MYSTERY_BIT_2": 0,
       "MYSTERY_BIT_3": 0,
-
-      "CTR": (counter + 1) % 16,
-      "CHECKSUM": 0
+      "NEW_SIGNAL_1": 0,
+      "ERROR_STATUS": 1
     }
+
+    crz_ctrl = {
+      "CRZ_ACTIVE": active,
+      "CRZ_ACTIVE_2": active,
+      "CRZ_AVAILABLE": int(bool(int(CS.cp.vl["GEAR"]["GEAR"]) & 4)),
+
+      "LINE_VISIBLE": 0,
+      "LANE_LINES": 0,
+      "HIGH_BEAMS_INDICATOR": 0,
+      "DISTANCE_SETTING": 0,
+      "RADAR_HAS_LEAD": 0,
+      "RADAR_LEAD_RELATIVE_DISTANCE": 0,
+      "PCS_FAILURE": 0,
+      "ACC_DEACTIVATED": 0,
+      "ACC_FAILURE": 0,
+      "FSC_STATUS": 0,
+      "5_SEC_DISABLE_TIMER": 0,
+      "DRSS_FAILURE": 0,
+      "HANDS_OFF_STEERING": 0,
+      "RADAR_BLOCKED": 0,
+      "HANDS_ON_STEER_WARN": 0
+    }
+
+
+def mazda2017_checksum(address: int, sig, d: bytearray) -> int:
+  sum_val = 0
+  if d[5] & 0x5:
+    sum_val = 0xFC
+  for i in range(len(d) - 1):
+    sum_val += d[i]
+  return (~sum_val) & 0xFF

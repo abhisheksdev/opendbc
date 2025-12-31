@@ -4,6 +4,7 @@ from opendbc.car.lateral import apply_driver_steer_torque_limits
 from opendbc.car.interfaces import CarControllerBase
 from opendbc.car.mazda import mazdacan
 from opendbc.car.mazda.values import CarControllerParams, Buttons
+from openpilot.common.realtime import ControlsTimer as Timer
 
 from opendbc.sunnypilot.car.mazda.icbm import IntelligentCruiseButtonManagementInterface
 
@@ -17,6 +18,8 @@ class CarController(CarControllerBase, IntelligentCruiseButtonManagementInterfac
     self.apply_torque_last = 0
     self.packer = CANPacker(dbc_names[Bus.pt])
     self.brake_counter = 0
+    self.hold_timer = Timer(6.0)
+    self.hold_delay = Timer(.5) # delay before we start holding as to not hit the brakes too hard
 
   def update(self, CC, CC_SP, CS, now_nanos):
     can_sends = []
@@ -56,6 +59,20 @@ class CarController(CarControllerBase, IntelligentCruiseButtonManagementInterfac
       #steer_required = steer_required and CS.lkas_allowed_speed
       steer_required = CS.out.steerFaultTemporary
       can_sends.append(mazdacan.create_alert_command(self.packer, CS.cam_laneinfo, ldw, steer_required))
+
+    # send acc commands
+    if self.CP.openpilotLongitudinalControl:
+      hold = False
+      if CS.out.standstill:
+        hold = self.hold_timer.active()
+      else:
+        self.hold_timer.reset()
+
+        accel_cmd = CC.actuators.accel * 1150
+        accel_cmd = max(-1000, min(accel_cmd, 1000))
+
+      if self.frame % 2 == 0:
+        can_sends.extend(mazdacan.create_acc_command(self.packer, self.CP, CS, self.frame, CC.longActive, hold, accel_cmd))
 
     # send steering command
     can_sends.append(mazdacan.create_steering_control(self.packer, self.CP,
