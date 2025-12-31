@@ -132,10 +132,13 @@ def create_button_cmd(packer, CP, counter, button):
 def create_acc_command(packer, CP, CS, frame, active, hold, accel_cmd):
   ret = []
 
+  acc_active = active
+  acc_allowed = int(bool(int(CS.cp.vl["GEAR"]["GEAR"]) & 4))
+
   if CP.flags & MazdaFlags.GEN1:
     crz_info = {
-      "ACC_ACTIVE": active,
-      "ACC_SET_ALLOWED": int(bool(int(CS.cp.vl["GEAR"]["GEAR"]) & 4)),
+      "ACC_ACTIVE": acc_active,
+      "ACC_SET_ALLOWED": acc_allowed,
       "CRZ_ENDED": 0,
       "STOPPING_MAYBE": hold,
       "STOPPING_MAYBE2": hold,
@@ -145,15 +148,15 @@ def create_acc_command(packer, CP, CS, frame, active, hold, accel_cmd):
       "STATIC_2": 0,
       "MYSTERY_BIT_1": 0,
       "MYSTERY_BIT_2": 0,
-      "MYSTERY_BIT_3": 0,
+      "MYSTERY_BIT_3": acc_active and acc_allowed,
       "NEW_SIGNAL_1": 0,
       "ERROR_STATUS": 1
     }
 
     crz_ctrl = {
-      "CRZ_ACTIVE": active,
-      "CRZ_ACTIVE_2": active,
-      "CRZ_AVAILABLE": int(bool(int(CS.cp.vl["GEAR"]["GEAR"]) & 4)),
+      "CRZ_ACTIVE": acc_active,
+      "CRZ_ACTIVE_2": acc_active,
+      "CRZ_AVAILABLE": acc_allowed,
 
       "LINE_VISIBLE": 0,
       "LANE_LINES": 0,
@@ -171,6 +174,11 @@ def create_acc_command(packer, CP, CS, frame, active, hold, accel_cmd):
       "RADAR_BLOCKED": 0,
       "HANDS_ON_STEER_WARN": 0
     }
+
+    ret.append(packer.make_can_msg("CRZ_INFO", 0, crz_info))
+    ret.append(packer.make_can_msg("CRZ_CTRL", 0, crz_ctrl))
+
+  return ret
 
 
 def mazda2017_checksum(address: int, sig, d: bytearray) -> int:

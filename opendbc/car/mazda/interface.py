@@ -15,12 +15,24 @@ class CarInterface(CarInterfaceBase):
   def _get_params(ret: structs.CarParams, candidate, fingerprint, car_fw, alpha_long, is_release, docs) -> structs.CarParams:
     ret.brand = "mazda"
     ret.safetyConfigs = [get_safety_config(structs.CarParams.SafetyModel.mazda)]
-    ret.radarUnavailable = True
+
+    if candidate in (CAR.MAZDA_CX5_2022, CAR.MAZDA_CX9_2021):
+      ret.radarUnavailable = False
+      ret.alphaLongitudinalAvailable = alpha_long
+      ret.openpilotLongitudinalControl = True
+      ret.startingState = True
+      ret.longitudinalTuning.kpBP = [0., 5., 30.]
+      ret.longitudinalTuning.kpV = [1.3, 1.0, 0.7]
+      ret.longitudinalTuning.kiBP = [0., 5., 20., 30.]
+      ret.longitudinalTuning.kiV = [0.36, 0.23, 0.17, 0.1]
+    else:
+      ret.radarUnavailable = True
 
     ret.dashcamOnly = candidate not in (CAR.MAZDA_CX5_2022, CAR.MAZDA_CX9_2021)
 
     ret.steerActuatorDelay = 0.1
     ret.steerLimitTimer = 0.8
+    ret.enableBsm = True
 
     CarInterfaceBase.configure_torque_tune(candidate, ret.lateralTuning)
 

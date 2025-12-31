@@ -86,4 +86,5 @@ class CarController(CarControllerBase, IntelligentCruiseButtonManagementInterfac
     new_actuators.torqueOutputCan = apply_torque
 
     self.frame += 1
+    Timer.tick()
     return new_actuators, can_sends

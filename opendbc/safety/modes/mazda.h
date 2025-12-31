@@ -16,6 +16,9 @@
 #define MAZDA_MAIN 0
 #define MAZDA_CAM  2
 
+extern bool mazda_longitudinal;
+bool mazda_longitudinal = false;
+
 // track msgs coming from OP so that we know what CAM msgs to drop and what to forward
 static void mazda_rx_hook(const CANPacket_t *msg) {
   if ((int)msg->bus == MAZDA_MAIN) {
@@ -44,6 +47,9 @@ static void mazda_rx_hook(const CANPacket_t *msg) {
 
     if (msg->addr == MAZDA_PEDALS) {
       brake_pressed = (msg->data[0] & 0x10U);
+      // TODO cruise check if radar disabled
+      // bool cruise_engaged = msg->data[0] & 0x8U;
+      // pcm_cruise_check(cruise_engaged);
     }
   }
 }
@@ -82,19 +88,19 @@ static bool mazda_tx_hook(const CANPacket_t *msg) {
     }
   }
 
-  return tx;
-}
+  // TODO safety check for uds tester
+  // TODO accel safety check
 
-static bool mazda_fwd_hook(int bus_num, int addr) {
-  bool block_msg = false;
-  return block_msg;
+  return tx;
 }
 
 static safety_config mazda_init(uint16_t param) {
   static const CanMsg MAZDA_TX_MSGS[] = {
     { MAZDA_LKAS, 0, 8, .check_relay = true },
     { MAZDA_CRZ_BTNS, 0, 8, .check_relay = false },
-    { MAZDA_LKAS_HUD, 0, 8, .check_relay = true }
+    { MAZDA_LKAS_HUD, 0, 8, .check_relay = true },
+    { MAZDA_CRZ_INFO, 0, 8, .check_relay = false },
+    { MAZDA_CRZ_CTRL, 0, 8, .check_relay = false },
   };
 
   static RxCheck mazda_rx_checks[] = {
@@ -113,6 +119,5 @@ static safety_config mazda_init(uint16_t param) {
 const safety_hooks mazda_hooks = {
   .init = mazda_init,
   .rx = mazda_rx_hook,
-  .tx = mazda_tx_hook,
-  .fwd = mazda_fwd_hook
+  .tx = mazda_tx_hook
 };
