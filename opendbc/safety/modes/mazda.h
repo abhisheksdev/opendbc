@@ -90,6 +90,17 @@ static bool mazda_tx_hook(const CANPacket_t *msg) {
 
   // TODO safety check for uds tester
   // TODO accel safety check
+  if (msg->addr == MAZDA_CRZ_INFO) {
+    if (!mazda_longitudinal) {
+        tx = false;
+    }
+  }
+
+  if (msg->addr == MAZDA_CRZ_CTRL) {
+    if (!mazda_longitudinal) {
+        tx = false;
+    }
+  }
 
   return tx;
 }
