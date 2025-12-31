@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-from opendbc.car import get_safety_config, structs
+from opendbc.car import get_safety_config, structs, uds
 from opendbc.car.common.conversions import Conversions as CV
+from opendbc.car.disable_ecu import disable_ecu
 from opendbc.car.interfaces import CarInterfaceBase
 from opendbc.car.mazda.carcontroller import CarController
 from opendbc.car.mazda.carstate import CarState
@@ -49,3 +50,18 @@ class CarInterface(CarInterfaceBase):
     ret.intelligentCruiseButtonManagementAvailable = True
 
     return ret
+
+  @staticmethod
+  def init(CP, CP_SP, can_recv, can_send, communication_control=None):
+    # disable radar if alpha longitudinal toggled on
+    if communication_control is None:
+      communication_control = bytes(
+        [uds.SERVICE_TYPE.COMMUNICATION_CONTROL, uds.CONTROL_TYPE.ENABLE_RX_DISABLE_TX, uds.MESSAGE_TYPE.NORMAL])
+    disable_ecu(can_recv, can_send, bus=0, addr=0x764, com_cont_req=communication_control)
+
+  @staticmethod
+  def deinit(CP, can_recv, can_send):
+    # re-enable radar if alpha longitudinal toggled on
+    communication_control = bytes(
+      [uds.SERVICE_TYPE.COMMUNICATION_CONTROL, uds.CONTROL_TYPE.ENABLE_RX_ENABLE_TX, uds.MESSAGE_TYPE.NORMAL])
+    CarInterface.init(CP, can_recv, can_send, communication_control)

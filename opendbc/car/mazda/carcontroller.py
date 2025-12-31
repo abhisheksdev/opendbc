@@ -1,5 +1,5 @@
 from opendbc.can import CANPacker
-from opendbc.car import Bus, structs
+from opendbc.car import Bus, structs, make_tester_present_msg
 from opendbc.car.lateral import apply_driver_steer_torque_limits
 from opendbc.car.interfaces import CarControllerBase
 from opendbc.car.mazda import mazdacan
@@ -77,6 +77,10 @@ class CarController(CarControllerBase, IntelligentCruiseButtonManagementInterfac
     # send steering command
     can_sends.append(mazdacan.create_steering_control(self.packer, self.CP,
                                                       self.frame, apply_torque, CS.cam_lkas))
+
+    # keep radar disabled
+    if self.frame % 20 == 0 and self.CP.openpilotLongitudinalControl:
+      can_sends.append(make_tester_present_msg(0x764, 0, suppress_response=True))
 
     # Intelligent Cruise Button Management
     can_sends.extend(IntelligentCruiseButtonManagementInterface.update(self, CC_SP, CS, self.packer, self.frame, self.last_button_frame))

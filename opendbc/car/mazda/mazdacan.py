@@ -133,7 +133,7 @@ def create_acc_command(packer, CP, CS, frame, active, hold, accel_cmd):
   ret = []
 
   acc_active = active
-  acc_allowed = int(bool(int(CS.cp.vl["GEAR"]["GEAR"]) & 4))
+  acc_allowed = active
 
   if CP.flags & MazdaFlags.GEN1:
     crz_info = {
