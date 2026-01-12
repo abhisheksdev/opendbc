@@ -2,7 +2,7 @@ from opendbc.can import CANDefine, CANParser
 from opendbc.car import Bus, create_button_events, structs
 from opendbc.car.common.conversions import Conversions as CV
 from opendbc.car.interfaces import CarStateBase
-from opendbc.car.mazda.values import DBC, LKAS_LIMITS
+from opendbc.car.mazda.values import DBC, LKAS_LIMITS, CAR
 
 from opendbc.sunnypilot.car.mazda.carstate_ext import CarStateExt
 
@@ -20,7 +20,8 @@ class CarState(CarStateBase, CarStateExt):
     self.crz_btns_counter = 0
     self.acc_active_last = False
     self.lkas_allowed_speed = False
-
+    self.accel_button = 0
+    self.decel_button = 0
     self.distance_button = 0
 
   def update(self, can_parsers) -> tuple[structs.CarState, structs.CarStateSP]:
@@ -32,6 +33,11 @@ class CarState(CarStateBase, CarStateExt):
 
     prev_distance_button = self.distance_button
     self.distance_button = cp.vl["CRZ_BTNS"]["DISTANCE_LESS"]
+
+    prev_accel_button = self.accel_button
+    prev_decel_button = self.decel_button
+    self.accel_button = cp.vl["CRZ_BTNS"]["RES"]
+    self.decel_button = cp.vl["CRZ_BTNS"]["SET_M"]
 
     self.parse_wheel_speeds(ret,
       cp.vl["WHEEL_SPEEDS"]["FL"],
@@ -72,7 +78,13 @@ class CarState(CarStateBase, CarStateExt):
     ret.gasPressed = cp.vl["ENGINE_DATA"]["PEDAL_GAS"] > 0
 
     # Either due to low speed or hands off
-    lkas_blocked = cp.vl["STEER_RATE"]["LKAS_BLOCK"] == 1
+    lkas_blocked_raw = cp.vl["STEER_RATE"]["LKAS_BLOCK"] == 1
+    lkas_blocked = lkas_blocked_raw
+
+    if self.CP.carFingerprint == CAR.MAZDA_CX5_2022:
+      # CX-5 2022 keeps torque available until ~5 mph even though LKAS_BLOCK is raised
+      if ret.standstill or speed_kph < 8.0:
+        lkas_blocked = False
 
     if self.CP.minSteerSpeed > 0:
       # LKAS is enabled at 52kph going up and disabled at 45kph going down
@@ -105,7 +117,11 @@ class CarState(CarStateBase, CarStateExt):
     # Check if LKAS is disabled due to lack of driver torque when all other states indicate
     # it should be enabled (steer lockout). Don't warn until we actually get lkas active
     # and lose it again, i.e, after initial lkas activation
-    ret.steerFaultTemporary = self.lkas_allowed_speed and lkas_blocked
+    if self.CP.carFingerprint in [CAR.MAZDA_CX9_2021, CAR.MAZDA_CX5_2022]:
+      ret.steerFaultTemporary = False
+    else:
+      # On if no driver torque the last 5 seconds
+      ret.steerFaultTemporary = cp.vl["STEER_RATE"]["HANDS_OFF_5_SECONDS"] == 1
 
     self.acc_active_last = ret.cruiseState.enabled
 
@@ -121,6 +137,8 @@ class CarState(CarStateBase, CarStateExt):
     # TODO: add button types for inc and dec
     ret.buttonEvents = [
       *create_button_events(self.distance_button, prev_distance_button, {1: ButtonType.gapAdjustCruise}),
+      *create_button_events(self.accel_button, prev_accel_button, {1: ButtonType.accelCruise}),
+      *create_button_events(self.decel_button, prev_decel_button, {1: ButtonType.decelCruise}),
       *self.button_events,
     ]
 
